@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import joblib
+import os
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, StandardScaler
@@ -16,84 +17,89 @@ from xgboost import XGBClassifier
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from sklearn.metrics import roc_auc_score, matthews_corrcoef
 
+# =====================================
+# Create models folder if not exists
+# =====================================
+
+os.makedirs("models", exist_ok=True)
+
+# =====================================
 # Load dataset
+# =====================================
+
+print("Loading dataset...")
+
 df = pd.read_csv("dataset/adult.csv", header=None)
 
 # Assign column names
 df.columns = [
-'age','workclass','fnlwgt','education','education-num',
-'marital-status','occupation','relationship','race',
-'sex','capital-gain','capital-loss','hours-per-week',
-'native-country','income'
+    'age','workclass','fnlwgt','education','education-num',
+    'marital-status','occupation','relationship','race',
+    'sex','capital-gain','capital-loss','hours-per-week',
+    'native-country','income'
 ]
 
-# Encode categorical variables
-le = LabelEncoder()
+# =====================================
+# Encode categorical variables properly
+# =====================================
+
+print("Encoding categorical variables...")
+
+label_encoders = {}
 
 for col in df.columns:
     if df[col].dtype == 'object':
-        df[col] = le.fit_transform(df[col])
+        le = LabelEncoder()
+        df[col] = le.fit_transform(df[col].astype(str))
+        label_encoders[col] = le
 
+# Save encoders
+joblib.dump(label_encoders, "models/label_encoders.pkl")
+
+# =====================================
 # Split features and target
+# =====================================
+
 X = df.drop('income', axis=1)
 y = df['income']
 
+# =====================================
 # Train test split
-X_train, X_test, y_train, y_test = train_test_split(
-X, y, test_size=0.2, random_state=42)
+# =====================================
 
-# Scale data
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y,
+    test_size=0.2,
+    random_state=42,
+    stratify=y
+)
+
+# =====================================
+# Feature scaling
+# =====================================
+
+print("Scaling features...")
+
 scaler = StandardScaler()
 
-X_train = scaler.fit_transform(X_train)
-X_test = scaler.transform(X_test)
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
 
-# Models dictionary
+# Save scaler
+joblib.dump(scaler, "models/scaler.pkl")
+
+# =====================================
+# Define models
+# =====================================
+
 models = {
 
-"Logistic Regression": LogisticRegression(),
+    "Logistic Regression": LogisticRegression(max_iter=1000),
 
-"Decision Tree": DecisionTreeClassifier(),
+    "Decision Tree": DecisionTreeClassifier(random_state=42),
 
-"KNN": KNeighborsClassifier(),
+    "KNN": KNeighborsClassifier(),
 
-"Naive Bayes": GaussianNB(),
+    "Naive Bayes": GaussianNB(),
 
-"Random Forest": RandomForestClassifier(),
-
-"XGBoost": XGBClassifier(use_label_encoder=False, eval_metric='logloss')
-
-}
-
-# Train and evaluate
-results = []
-
-for name, model in models.items():
-
-    model.fit(X_train, y_train)
-
-    y_pred = model.predict(X_test)
-
-    y_prob = model.predict_proba(X_test)[:,1]
-
-    accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
-    auc = roc_auc_score(y_test, y_prob)
-    mcc = matthews_corrcoef(y_test, y_pred)
-
-    results.append([
-        name, accuracy, auc, precision, recall, f1, mcc
-    ])
-
-    # Save model
-    joblib.dump(model, f"models/{name}.pkl")
-
-# Display results
-results_df = pd.DataFrame(results, columns=[
-"Model","Accuracy","AUC","Precision","Recall","F1","MCC"
-])
-
-print(results_df)
-
+    "Random Fores
