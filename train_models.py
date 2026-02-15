@@ -17,7 +17,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from sklearn.metrics import roc_auc_score, matthews_corrcoef
 
 # Load dataset
-df = pd.read_csv("dataset/adult.data", header=None)
+df = pd.read_csv("dataset/adult.csv", header=None)
 
 # Assign column names
 df.columns = [
